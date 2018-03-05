@@ -3,7 +3,7 @@ var users = [
     id: 1,
     name: 'jan',
     password: 'jantje',
-    roles: ['admin', 'illuminati']
+    roles: ['admin']
   },
   {
     id: 2,

@@ -20,9 +20,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', require('./routes/index.route')());
-app.use('/users', require('./routes/users.route')());
-app.use('/illuminati', require('./routes/illuminati.route')());
+app.use('/', require('./routes/index.route'));
+app.use('/users', require('./routes/users.route'));
+app.use('/illuminati', require('./routes/illuminati.route'));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

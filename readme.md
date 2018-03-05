@@ -27,7 +27,8 @@ passport.use('login', new LocalStrategy(function (username, password, done) {
 ``` 
 4. We moeten de app nog laten weten dat we passport gebruiken _app.js_:
 ```javascript
-app.use(require('passport').initialize());
+var passport = require('passport')
+app.use(passport.initialize());
 ```
 5. Nu kunnen we dit gebruiken in de index route _/routes/index.route.js_. Require passport en gebruik de middleware in de route:
 ```javascript
@@ -85,7 +86,94 @@ router.get("/me", passport.authenticate('jwt', { session: false }), function (re
 10. Wanneer je het request uitvoert zal je zien dat je nu de juiste data terug krijgt.
 11. Zo kan je ook de gehele route Illuminati ineenkeer afschermen, dit doe je in de _app.js_:
 ```javascript
-var passport = require('passport');
-...
 app.use('/illuminati', passport.authenticate('jwt', { session: false }), require('./routes/illuminati.route')());
 ```
+## Autorizatie
+Nu we onszelf bekend kunnen maken, kunnen we ook bepaalde delen van onze applicatie afschermen. Dit gaan we doen met **Connect-Roles**.
+1. Eerst willen we Connect-Roles enablen. We maken een nieuw object aan en stellen meteen een failure handler.<br />
+Open _/config/roles-config.js_ en voeg het volgende in:
+```javascript
+var ConnectRoles = require('connect-roles');
+
+var roles = new ConnectRoles();
+
+var roles = new ConnectRoles({
+    failureHandler: function (req, res, action) {
+        res.status(403).json({
+            message: 'access denied',
+            action: action
+        });
+    }
+});
+
+module.exports = roles;
+``` 
+2. Nu gaan we in _app.js_ aangeven dat we deze middleware willen gebruiken. <br/>
+**Let op: Dit moet na de passport declaratie!**
+```javascript
+var roles = require('./config/roles-config');
+app.use(roles.middleware());
+```
+3. We gaan de rol admin beschermen, hier maken we een functie voor in _config/roles-config.js_:
+```javascript
+roles.use('admin', function (req) {
+	if(req.user){
+		var adminRoleIndex = _.findIndex(req.user.roles, (r) => r == 'admin');
+		if(adminRoleIndex >= 0){
+			return true;
+		};
+		// Don't return false, this way we can get into the next checker.
+	}
+});
+```
+4. Nu kunnen we deze gebruiken in _/routes/index.route.js_ om de admin route te beschermen.<br />
+Daarbij moeten we ook nog even aangeven dat we via JWT willen authenticeren.
+```javascript
+var roles = require('../config/roles-config');
+...
+router.get('/admin', roles.is('admin'), function(req, res){
+    res.json({ message: 'Success! Je bent een administrator en je mag deze pagina bekijken.' });
+});
+```
+5. Wanneer je een GET uitvoert zal je zien dat je hem niet meer mag benaderen, tenzij je een header meegeeft.
+6. De rollen worden van boven naar beneden behandeld, daarom retourneren we geen false. <br />
+Als we nu ook een illuminatierol aangeven kunnen we straks zowel met deze als met de adminrol bij de illuminatie:
+```javascript
+roles.use('illuminati', function (req) {
+	if(req.user){
+		var illuminatiRoleIndex = _.findIndex(req.user.roles, (r) => r == 'illuminati');
+		if(illuminatiRoleIndex >= 0){
+			return true;
+		};
+		// Don't return false, this way we can get into the next checker.
+	}
+});
+```
+Pas daarbij de admin functie aan zodat deze geen string meer als eerste parameter verwacht. Deze methode moet wel onder de illuminatirol staan.<br/>
+7. Pas _app.js_ zo aan dat de illuminatiroute deze rol gebruikt:
+```javascript
+app.use('/illuminati', passport.authenticate('jwt', { session: false }), roles.is('illuminati'), require('./routes/illuminati.route'));
+```
+8. Merk op dat nu alle illuminati bij deze route kunnen, maar ook nog steeds alle admins.
+9. Ten slotte willen we nu de _/:id_ binnen illuminatie beperken tot jezelf:
+```javascript
+var roles = require('../config/roles-config');
+...
+router.get("/:id", roles.is('self'), function (req, res) {
+    res.json(_.filter(users, u => u.id == req.params.id));
+});
+```
+10. Pas dan de config weer aan met de volgende methode (let op: boven de admin):
+```javascript
+roles.use('self', function(req){
+	if(req.user){
+		if(req.user.id == req.params.id){
+			return true;
+		}
+	}
+});
+``` 
+11. Nu kan je alleen jezelf als illuminati opvragen, je moet dus de rol hebben en je moet je eigen ID gebruiken (of je moet admin zijn).
+## Meer weten?
+Kijk voor passport op http://www.passportjs.org <br/>
+Kijk voor connect-roles op https://github.com/ForbesLindesay/connect-roles

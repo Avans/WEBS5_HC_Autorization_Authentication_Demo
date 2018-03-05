@@ -4,14 +4,14 @@ var users = require('../models/users.model.js');
 var express = require('express');
 var router = express.Router();
 
-module.exports = function () {
-    router.get('/', function (req, res) {
-        return res.json(users);
-    });
+var passport = require('passport');
 
-    router.get("/me", function (req, res) {
-        res.json({ message: 'Hier gaan we straks jouw eigen gebruiker teruggeven. ' });
-    });
+router.get('/', function (req, res) {
+    return res.json(users);
+});
 
-    return router;
-};
+router.get("/me", function (req, res) {
+    res.json({ message: 'Hier gaan we straks jouw eigen gebruiker teruggeven. ' });
+});
+
+module.exports = router;
